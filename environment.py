@@ -85,10 +85,9 @@ class EmailTriageEnv:
             instructions="Episode complete."
         )
 
-    def _grade(self, action: Action, email: Dict) -> tuple[float, Dict]:
+  def _grade(self, action: Action, email: Dict) -> tuple[float, Dict]:
         if self.task_id == "spam_detection":
-            score = grade_easy(action.label, email["correct_label"])
-            return score, {"label": score}
+            return grade_easy(action.label, email["correct_label"])
         elif self.task_id == "priority_sorting":
             return grade_medium(
                 action.label, action.priority or 2,
