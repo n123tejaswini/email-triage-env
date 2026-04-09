@@ -1,15 +1,15 @@
 # env/graders.py
-from typing import Dict, Any
+from typing import Dict
 
 def _clamp(score: float) -> float:
     """Ensure score is strictly between 0 and 1 (exclusive)."""
-    return min(max(score, 0.001), 0.999)
+    return min(max(round(score, 4), 0.001), 0.999)
 
 
-def grade_easy(action_label: str, correct_label: str) -> float:
+def grade_easy(action_label: str, correct_label: str) -> tuple[float, Dict]:
     """Binary: right or wrong."""
     score = 0.999 if action_label.lower() == correct_label.lower() else 0.001
-    return score
+    return score, {"label": score}
 
 
 def grade_medium(action_label: str, action_priority: int,
@@ -25,8 +25,7 @@ def grade_medium(action_label: str, action_priority: int,
     else:
         priority_score = 0.001
 
-    total = (label_score * 0.6) + (priority_score * 0.4)
-    total = _clamp(round(total, 4))
+    total = _clamp((label_score * 0.6) + (priority_score * 0.4))
     breakdown = {"label": label_score, "priority": priority_score}
     return total, breakdown
 
@@ -47,7 +46,7 @@ def grade_hard(action: Dict, email: Dict) -> tuple[float, Dict]:
 
     # Priority score
     priority_diff = abs(action_priority - correct_priority)
-    priority_score = _clamp(max(0.001, 0.999 - (priority_diff * 0.5)))
+    priority_score = _clamp(0.999 - (priority_diff * 0.499))
 
     # Reply score
     if not requires_reply:
@@ -57,10 +56,10 @@ def grade_hard(action: Dict, email: Dict) -> tuple[float, Dict]:
     else:
         hits = sum(1 for kw in ideal_keywords
                    if kw.lower() in reply_draft.lower())
-        reply_score = _clamp(hits / max(len(ideal_keywords), 1))
+        raw = hits / max(len(ideal_keywords), 1)
+        reply_score = _clamp(raw * 0.998 + 0.001)  # maps [0,1] to (0.001, 0.999)
 
-    total = (label_score * 0.4) + (priority_score * 0.3) + (reply_score * 0.3)
-    total = _clamp(round(total, 4))
+    total = _clamp((label_score * 0.4) + (priority_score * 0.3) + (reply_score * 0.3))
 
     breakdown = {
         "label": label_score,
