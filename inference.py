@@ -118,8 +118,9 @@ def run_task(task_id: str):
                 break
 
         # Score = average reward across steps
-        score = sum(rewards) / len(rewards) if rewards else 0.0
-        score = min(max(score, 0.001), 0.999)
+        rewards = [min(max(round(r, 4), 0.001), 0.999) for r in rewards]
+        score = sum(rewards) / len(rewards) if rewards else 0.001
+        score = min(max(round(score, 4), 0.001), 0.999)
         success = score >= SUCCESS_THRESHOLD
 
     except Exception as e:
