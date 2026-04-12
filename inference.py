@@ -8,7 +8,7 @@ from openai import OpenAI
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN     = os.getenv("HF_TOKEN", "")
-ENV_URL      = os.getenv("ENV_URL", "http://localhost:7860")  # Your HF Space URL
+ENV_URL      = os.getenv("ENV_URL", "http://localhost:7860")
 
 TASKS = ["spam_detection", "priority_sorting", "full_triage"]
 MAX_STEPS = 10
@@ -16,19 +16,24 @@ SUCCESS_THRESHOLD = 0.5
 
 client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
 
+# ── Clamp helper ───────────────────────────────────────────────
+def clamp(value: float) -> float:
+    """Ensure value is strictly between 0 and 1 (exclusive)."""
+    return min(max(round(float(value), 4), 0.001), 0.999)
+
 # ── Mandatory log functions ────────────────────────────────────
 def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 def log_step(step, action, reward, done, error):
     err = error if error else "null"
-    print(f"[STEP] step={step} action={action} reward={reward:.2f} "
+    print(f"[STEP] step={step} action={action} reward={reward:.4f} "
           f"done={str(done).lower()} error={err}", flush=True)
 
 def log_end(success, steps, score, rewards):
-    rstr = ",".join(f"{r:.2f}" for r in rewards)
+    rstr = ",".join(f"{r:.4f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} "
-          f"score={score:.2f} rewards={rstr}", flush=True)
+          f"score={score:.4f} rewards={rstr}", flush=True)
 
 # ── LLM decision function ──────────────────────────────────────
 def ask_llm(task_id: str, observation: dict) -> dict:
@@ -66,18 +71,17 @@ def ask_llm(task_id: str, observation: dict) -> dict:
         )
         import json
         text = resp.choices[0].message.content.strip()
-        # Strip markdown code fences if present
         text = text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
     except Exception as e:
         print(f"[DEBUG] LLM error: {e}", flush=True)
-        return {"label": "normal", "priority": 2}  # Safe fallback
+        return {"label": "normal", "priority": 2}
 
 # ── Run one task episode ───────────────────────────────────────
 def run_task(task_id: str):
     rewards: List[float] = []
     steps_taken = 0
-    score = 0.0
+    score = 0.001
     success = False
 
     log_start(task=task_id, env="email-triage-env", model=MODEL_NAME)
@@ -103,12 +107,12 @@ def run_task(task_id: str):
             )
             result = step_resp.json()
 
+            # Clamp reward strictly between 0 and 1
             raw_reward = result.get("reward", 0.001)
-            reward = min(max(round(float(raw_reward), 4), 0.001), 0.999)
-            done   = result.get("done", False)
-            error  = None
+            reward = clamp(raw_reward)
 
-            rewards.append(reward)
+            done  = result.get("done", False)
+            error = None
 
             rewards.append(reward)
             steps_taken = step
@@ -120,10 +124,10 @@ def run_task(task_id: str):
             if done:
                 break
 
-        # Score = average reward across steps
-        rewards = [min(max(round(r, 4), 0.001), 0.999) for r in rewards]
+        # Clamp all rewards and compute score
+        rewards = [clamp(r) for r in rewards]
         score = sum(rewards) / len(rewards) if rewards else 0.001
-        score = min(max(round(score, 4), 0.001), 0.999)
+        score = clamp(score)
         success = score >= SUCCESS_THRESHOLD
 
     except Exception as e:
