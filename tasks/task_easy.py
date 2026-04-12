@@ -1,9 +1,6 @@
 # tasks/task_easy.py
 TASK_ID = "spam_detection"
-INSTRUCTIONS = (
-    "Label each email as 'spam' or 'not_spam'. "
-    "You get 1.0 for correct, 0.0 for wrong."
-)
+INSTRUCTIONS = "Label each email as 'spam' or 'not_spam'."
 MAX_STEPS = 5
 
 EMAILS = [

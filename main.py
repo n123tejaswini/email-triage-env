@@ -52,7 +52,15 @@ def list_tasks():
             {"id": "full_triage", "difficulty": "hard"},
         ]
     }
-
+def root():
+    return {
+        "name": "Email Triage OpenEnv",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "tasks": "/tasks",
+        "health": "/health"
+    }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=7860, reload=False)
+    
