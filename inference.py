@@ -103,9 +103,12 @@ def run_task(task_id: str):
             )
             result = step_resp.json()
 
-            reward = result.get("reward", 0.0)
+            raw_reward = result.get("reward", 0.001)
+            reward = min(max(round(float(raw_reward), 4), 0.001), 0.999)
             done   = result.get("done", False)
             error  = None
+
+            rewards.append(reward)
 
             rewards.append(reward)
             steps_taken = step
